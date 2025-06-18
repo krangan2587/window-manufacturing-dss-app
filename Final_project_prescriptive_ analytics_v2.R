@@ -5,7 +5,6 @@ library(DT)
 library(ggplot2)
 library(broom)
 
-# Simulate some example data (replace with your real data reading step)
 set.seed(42)
 #read the xlsx file
 df <- read_excel("Window_Manufacturing.xlsx")
