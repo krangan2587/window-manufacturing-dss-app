@@ -25,6 +25,39 @@ df <- read_excel("Window_Manufacturing.xlsx",
 
 data <- df
 
+data_dictionary <- data.frame(
+  Variable = c("breakage_rate", "pass_fail", "window_size", "glass_thickness",
+               "ambient_temp", "cut_speed", "edge_deletion_rate",
+               "spacer_distance", "window_color", "window_type",
+               "glass_supplier", "silicon_viscosity", "supplier_location"),
+  "Data Type" = c("numeric", "categorical", "numeric", "numeric", 
+                  "numeric", "numeric", "numeric", "numeric", "numeric",
+                  "categorical", "categorical", "numeric", "categorical"),
+  "Business Use" = c("predictive target", "predictive target", "customer specification",
+                     "customer specification", "manufacturer specification", "manufacturer specification",
+                     "manufacturer specification", "manufacturer specification", "customer specification",
+                     "customer specification", "manufacturer specification", "manufacturer specification",
+                     "manufacturer specification"),
+  "Model Use" = c("target", "target", rep("input", times = 11)),
+  "Defintion" = c(
+    "The average number of windows broken per batch",
+    "A binary feature indicating if the batch met breakage specifications or not",
+    "Diagonal of the recetangle in inches",
+    "Thickness of the glass in inches",
+    "The ambient temperate in Celcius when window is cut (0 degrees F to 75.2 F)",
+    "A CNC machine cut in meters per minute",
+    "A CNC machine edging in meters per minute",
+    "Distance between brace spacers in inches",
+    "Visible Light Transmittance (VLT) percentage is percentage of visible light transmitted through the window glass. Low values indicate darker glass, while larger numbers indicate more clear glass",
+    "Window frame made of: Aluminum, Vinyl, or Wood",
+    "Supplier A, Supplier B, Supplier C, Supplier D",
+    "The viscosity of the silicone sealants or adhesives used in the assembly or installation of the window.  A crucial property that affects their application and performance. Larger number implies greater thickness",
+    "Iowa, Michigan, Minnesota, Wisconsin"
+  ),
+  check.names = FALSE
+) %>% 
+  arrange(Variable)
+
 # ---- Descriptive Plots ----
 
 breakage_rate_mean <- data.frame(mean = round(mean(df$breakage_rate), 2))
@@ -54,9 +87,9 @@ plot_supplier <- subset(df, !is.na(glass_supplier)) %>%
   geom_jitter(aes(color = glass_supplier), show.legend = FALSE, alpha = 0.5, size = 2) +
   stat_summary(fun = mean, geom = "crossbar", color = "black", size = 0.5) +
   geom_label(data = supplier_mean,
-             aes(x = glass_supplier, y = annotate, label = paste("Mean:",mean)),
-             show.legend = FALSE) +
-  labs(x = "Glass Supplier", y = "Breakage Rate") +
+             aes(x = glass_supplier, y = annotate, fill = glass_supplier, 
+                 label = paste("Mean:",mean)), show.legend = FALSE) +
+  labs(x = NULL, y = "Breakage Rate") +
   theme_classic() +
   theme(axis.title.y = element_text(size = 18, margin = margin(r = 10)),
         axis.text.x = element_text(size = 18, color = "black", margin = margin(t = 5, b = 5)),
@@ -93,6 +126,8 @@ plot_window_size <- ggplot(df, aes(x = window_size, y = breakage_rate)) +
         axis.text = element_text(size = 16)
   )
 
+# ---- Predictive Variables ----
+
 controllable_vars <- c("cut_speed", "edge_deletion_rate", "spacer_distance", "silicon_viscosity")
 uncontrollable_vars <- c(
   "ambient_temp", "window_size", "glass_thickness", "window_color",
@@ -103,7 +138,7 @@ uncontrollable_vars <- c(
 
 ui <- dashboardPage(
   skin = "blue",
-  dashboardHeader(title = "Window Wonder",
+  dashboardHeader(title = "WindowCo Helper",
                   dropdownMenu(type = "messages", badgeStatus = "success",
                                messageItem("Michael Frank", "frank118@purdue.edu"),
                                messageItem("Kasturirangan Penugonde", "kpenugon@purdue.edu"),
@@ -123,9 +158,41 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tabItems(
-      tabItem(tabName = "home", h1("Home Page")),
+      tabItem(tabName = "home",
+              fluidRow(
+                box(width = 6,
+                    h2(strong("Welcome to Window Wonder!")),
+                    h4("This application helps you, our", strong("WindowCo Product Team member"),", to understand how different variables – manufacturing parameters, customer specifications, and the intersection of both – affect our ability to minimize breakage and keep our customers satisfied."),
+                    h4("This app contains three tabs:"),
+                    tags$ul(
+                      tags$li(h4(strong("Descriptive analytics:"), "This allows you to explore numerical relationships between the full range of customer specifications and manufacturing specifications.")),
+                      tags$li(h4(strong("Predictive analytics:"), "This allows you to analyze predictable relationships between specifications and their impact on key quality outcome indicators: Breakage Rate (average windows broken per batch) or Pass/Fail (binary for the total batch).")),
+                      tags$li(h4(strong("Prescriptive analytics:"), "This extends predictive analytics to identify how WindowCo can make future business decisions that optimize quality of our product, improve customer satisfaction, and enhance profitability as a result."))
+                    )
+                ),
+              ),
+              fluidRow(
+                box(width = 6,
+                    h2(strong("Analytic problem framing")),
+                    h4("The fundamental question is: what window parameters are most associated with breakage and batch pass/failure, and how can we change our business decisions to improve those metrics?"),
+                    h4("Example insights could include:"),
+                    tags$ul(
+                      tags$li(h4("Large pane sizes with Iowa-supplied glass have a 50% higher breakage rate than smaller pane sizes – we should consider optimizing our glass supply mix across other locations.")),
+                      tags$li(h4("Dark glass (i.e., low visible light transfer) cut at higher ambient temperatures has a significantly higher batch failure rate – we should examine how we can adjust factory planning to cut these batches at lower temperatures, or if this is a product we want to consider changing."))
+                    ),
+                    h4("Because our inputs contain customer-driven parameters and manufacturer-driven parameters, the application offers the user maximum flexibility to explore and describe variable interactions, isolate variable combinations that predict window quality outcomes, and prescribe optimal values."),
+                    h4("For prediction specifically, we have offered the option to use linear/logistic regression, elastic net, and random forest predictive methods – because there are a range of variables that may or may not have interactive relationships. We find random forest offers the most useful insights because it is more discovery-oriented (requiring the user to make fewer assumptions).")
+                )
+              ),
+              fluidRow(
+                box(width = 15,
+                    h2(strong("Data Dictionary")),
+                    DTOutput('data_dictionary'))
+              )
+      ),
       tabItem(tabName = "descriptive",
-              h1("Descriptive Analysis"),
+              h1(strong("Descriptive Analysis")),
+              h4("Please explore our data set with a few preset graphics or with our custom plot generator."),
               fluidRow(
                 box(title = "Distribution of Breakage Rate", solidHeader = TRUE, status = "primary", plotOutput("histogram")),
                 box(title = "Plot your own graph here!", solidHeader = TRUE, status = "info", plotOutput("custom_plot"))
@@ -143,10 +210,10 @@ ui <- dashboardPage(
               fluidRow(box(title = "Breakage Rate vs. Window Size", solidHeader = TRUE, status = "primary", plotOutput("window_size")))
       ),
       tabItem(tabName = "predictive",
-              h2("Predictive Analytics"),
+              h1(strong("Predictive Analytics")),
               sidebarLayout(
                 sidebarPanel(
-                  h4("Model Settings"),
+                  h3(strong("Model Settings")),
                   selectInput("response", "Choose Response Variable:", choices = c("breakage_rate", "pass_fail"), selected = "breakage_rate"),
                   uiOutput("model_type_ui"),
                   checkboxGroupInput("predictors", "Select Predictors:",
@@ -169,9 +236,9 @@ ui <- dashboardPage(
                   actionButton("fit_model", "Fit Model", icon = icon("cogs"))
                 ),
                 mainPanel(
-                  h4("Model Coefficient Table / Variable Importance"),
+                  h4(strong("Model Coefficient Table / Variable Importance")),
                   DTOutput("coef_table"),
-                  h4("Model Fit Evaluation"),
+                  h4(strong("Model Fit Evaluation")),
                   plotOutput("model_fit_plot"),
                   uiOutput("residual_plot_box"),
                   verbatimTextOutput("fit_summary")
@@ -179,14 +246,14 @@ ui <- dashboardPage(
               )
       ),
       tabItem(tabName = "prescriptive",
-              h2("Prescriptive Analytics (LPsolve)"),
+              h1(strong("Prescriptive Analytics (LPsolve)")),
               sidebarLayout(
                 sidebarPanel(
-                  h4("Set Uncontrollable Variables"),
+                  h4(strong("Set Uncontrollable Variables:")),
                   uiOutput("presc_sliders"),
-                  h4("Set/Override Bounds for Controllables"),
+                  h4(strong("Set/Override Bounds for Controllables:")),
                   uiOutput("controllable_bounds_ui"),
-                  h4("Optimization Objective"),
+                  h4(strong("Optimization Objective:")),
                   sliderInput("min_br_constraint", "Minimum Predicted Breakage Rate (constraint):",
                               min = 0,
                               max = max(data$breakage_rate, na.rm = TRUE) + 10,
@@ -196,15 +263,15 @@ ui <- dashboardPage(
                   actionButton("presc_optimize", "Optimize Actions", icon = icon("bolt"))
                 ),
                 mainPanel(
-                  h4("Model Coefficient Table (for optimization)"),
+                  h4(strong("Model Coefficient Table (for optimization)")),
                   DTOutput("presc_coef_table"),
-                  h4("Objective Function and Constraints"),
+                  h4(strong("Objective Function and Constraints")),
                   verbatimTextOutput("presc_obj_txt"),
-                  h4("Optimal Actions (Controllable Variables)"),
+                  h4(strong("Optimal Actions (Controllable Variables)")),
                   tableOutput("optimal_actions"),
-                  h4("Predicted Outcome with Optimal Actions"),
+                  h4(strong("Predicted Outcome with Optimal Actions")),
                   verbatimTextOutput("predicted_optimal"),
-                  h4("Prescriptive Tab Info"),
+                  h4(strong("Prescriptive Tab Info")),
                   uiOutput("presc_info")
                 )
               )
@@ -217,7 +284,10 @@ ui <- dashboardPage(
 
 server <- function(input, output, session) {
   
-  # --- Descriptive Plots ---
+  # ---- Home Page ----
+  output$data_dictionary <- renderDT(data_dictionary, options = list(pageLength = 15))
+  
+  # ---- Descriptive Plots ----
   output$histogram <- renderPlot({ plot_histogram })
   output$supplier <- renderPlot({ plot_supplier })
   output$cut_speed <- renderPlot({ plot_cut_speed })
@@ -428,7 +498,7 @@ server <- function(input, output, session) {
   # ---- Prescriptive Analytics ----
   output$presc_sliders <- renderUI({
     predictors <- last_predictors()
-    if (is.null(predictors)) return(tags$p("Please train a model first."))
+    if (is.null(predictors)) return(tags$p("Please fit a model on the Predictive Analytics tab first.", style = "color:red"))
     lapply(uncontrollable_vars, function(var) {
       if (var %in% predictors && !is.null(df[[var]]) && any(!is.na(df[[var]]))) {
         if (is.numeric(df[[var]]) || is.integer(df[[var]])) {
